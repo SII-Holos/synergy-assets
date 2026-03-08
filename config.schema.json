@@ -714,6 +714,30 @@
       "description": "Small model to use for tasks like title generation in the format of provider/model",
       "type": "string"
     },
+    "embedding": {
+      "description": "Custom embedding endpoint for memory indexing (OpenAI-compatible)",
+      "type": "object",
+      "properties": {
+        "url": {
+          "description": "Base URL of the embedding API (OpenAI-compatible)",
+          "type": "string"
+        },
+        "api_key": {
+          "description": "API key for the embedding service",
+          "type": "string"
+        },
+        "model": {
+          "description": "Embedding model ID, e.g. BAAI/bge-large-zh-v1.5",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "api_key",
+        "model"
+      ],
+      "additionalProperties": false
+    },
     "default_agent": {
       "description": "Default agent to use when none is specified. Must be a primary agent. Falls back to 'synergy' if not set or if the specified agent is invalid.",
       "type": "string"
@@ -726,9 +750,6 @@
       "description": "Agent configuration, see https://synergy.ai/docs/agent",
       "type": "object",
       "properties": {
-        "plan": {
-          "ref": "AgentConfig"
-        },
         "master": {
           "ref": "AgentConfig"
         },
@@ -1450,10 +1471,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "interaction": {
-      "description": "Control system-level interactions. When false, skips agent switch confirmations and plan execution prompts. Useful for non-interactive/CI environments.",
-      "type": "boolean"
     },
     "experimental": {
       "type": "object",

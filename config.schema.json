@@ -714,30 +714,6 @@
       "description": "Small model to use for tasks like title generation in the format of provider/model",
       "type": "string"
     },
-    "embedding": {
-      "description": "Custom embedding endpoint for memory indexing (OpenAI-compatible)",
-      "type": "object",
-      "properties": {
-        "url": {
-          "description": "Base URL of the embedding API (OpenAI-compatible)",
-          "type": "string"
-        },
-        "api_key": {
-          "description": "API key for the embedding service",
-          "type": "string"
-        },
-        "model": {
-          "description": "Embedding model ID, e.g. BAAI/bge-large-zh-v1.5",
-          "type": "string"
-        }
-      },
-      "required": [
-        "url",
-        "api_key",
-        "model"
-      ],
-      "additionalProperties": false
-    },
     "default_agent": {
       "description": "Default agent to use when none is specified. Must be a primary agent. Falls back to 'synergy' if not set or if the specified agent is invalid.",
       "type": "string"
@@ -1064,6 +1040,139 @@
         },
         "additionalProperties": false
       }
+    },
+    "identity": {
+      "description": "Identity configuration for embedding and evolution",
+      "ref": "IdentityConfig",
+      "type": "object",
+      "properties": {
+        "embedding": {
+          "description": "Embedding model configuration for memory and retrieval",
+          "type": "object",
+          "properties": {
+            "baseURL": {
+              "description": "Base URL for the embedding API",
+              "type": "string"
+            },
+            "apiKey": {
+              "description": "API key for the embedding service",
+              "type": "string"
+            },
+            "model": {
+              "description": "Embedding model name (e.g., 'Qwen/Qwen3-Embedding-8B')",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "evolution": {
+          "description": "Dual-mode evolution system: passive experience learning + active memory curation (default: true)",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "ref": "EvolutionConfig",
+              "type": "object",
+              "properties": {
+                "passive": {
+                  "description": "RL-enhanced passive experience learning (default: true)",
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "ref": "EvolutionPassive",
+                      "type": "object",
+                      "properties": {
+                        "encode": {
+                          "description": "Learn from conversations — extract intent, reward, and scripts (default: true)",
+                          "type": "boolean"
+                        },
+                        "retrieve": {
+                          "description": "Inject relevant past experiences into new conversations (default: true)",
+                          "type": "boolean"
+                        },
+                        "learning": {
+                          "description": "Hyperparameters for the experience learning pipeline",
+                          "ref": "LearningConfig",
+                          "type": "object",
+                          "properties": {
+                            "alpha": {
+                              "description": "Q-learning step size / learning rate (default: 0.3)",
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "epsilon": {
+                              "description": "ε-greedy exploration probability (default: 0.1)",
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "simThreshold": {
+                              "description": "Minimum cosine similarity for retrieval candidates (default: 0.5)",
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "topK": {
+                              "description": "Number of experiences to retrieve (default: 5)",
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 9007199254740991
+                            },
+                            "wSim": {
+                              "description": "Weight for similarity in hybrid score (default: 0.5)",
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "wQ": {
+                              "description": "Weight for Q-value in hybrid score (default: 0.5)",
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "rewardThreshold": {
+                              "description": "Reward boundary between script (>=) and reflect (<) paths (default: 0)",
+                              "type": "number",
+                              "minimum": -1,
+                              "maximum": 1
+                            },
+                            "dedupThreshold": {
+                              "description": "Cosine similarity threshold for deduplicating experiences (default: 0.85)",
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "qInitPos": {
+                              "description": "Initial Q-value for positive-reward experiences (default: 0)",
+                              "type": "number"
+                            },
+                            "qInitNeg": {
+                              "description": "Initial Q-value for negative-reward experiences (default: 0)",
+                              "type": "number"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "active": {
+                  "description": "Agent-initiated active memory curation via memory tools (default: true)",
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "mcp": {
       "description": "MCP (Model Context Protocol) server configurations",

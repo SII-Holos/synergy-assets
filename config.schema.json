@@ -648,9 +648,6 @@
           },
           "model": {
             "type": "string"
-          },
-          "subtask": {
-            "type": "boolean"
           }
         },
         "required": [
@@ -707,11 +704,35 @@
       }
     },
     "model": {
-      "description": "Model to use in the format of provider/model, eg anthropic/claude-2",
+      "description": "Default model in the format of provider/model, eg anthropic/claude-sonnet-4-5",
       "type": "string"
     },
-    "small_model": {
-      "description": "Small model to use for tasks like title generation in the format of provider/model",
+    "nano_model": {
+      "description": "Cheapest model for trivial extraction tasks like title generation, in the format of provider/model. Falls back to mini_model → mid_model → model.",
+      "type": "string"
+    },
+    "mini_model": {
+      "description": "Lightweight model for simple tasks like intent extraction, in the format of provider/model. Falls back to mid_model → model.",
+      "type": "string"
+    },
+    "mid_model": {
+      "description": "Mid-tier model for internal agents that need moderate reasoning (script extraction, reward evaluation, code exploration), in the format of provider/model. Falls back to the default model.",
+      "type": "string"
+    },
+    "thinking_model": {
+      "description": "Deep thinking model for complex reasoning and architecture tasks, in the format of provider/model. Falls back to the default model if not set.",
+      "type": "string"
+    },
+    "long_context_model": {
+      "description": "Model with extra-large context window for processing very long inputs, in the format of provider/model. Falls back to the default model if not set.",
+      "type": "string"
+    },
+    "creative_model": {
+      "description": "Model for creative and visual tasks (UI design, writing, artistry), in the format of provider/model. Falls back to the default model if not set.",
+      "type": "string"
+    },
+    "vision_model": {
+      "description": "Model for vision tasks (image/PDF/video analysis), in the format of provider/model. Required for the look_at tool to work. If not set, vision capabilities are disabled.",
       "type": "string"
     },
     "default_agent": {
@@ -1065,6 +1086,25 @@
           },
           "additionalProperties": false
         },
+        "rerank": {
+          "description": "Rerank model configuration for memory retrieval refinement",
+          "type": "object",
+          "properties": {
+            "baseURL": {
+              "description": "Base URL for the rerank API",
+              "type": "string"
+            },
+            "apiKey": {
+              "description": "API key for the rerank service (falls back to embedding.apiKey)",
+              "type": "string"
+            },
+            "model": {
+              "description": "Rerank model name (e.g., 'Qwen/Qwen3-Reranker-8B')",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
         "evolution": {
           "description": "Dual-mode evolution system: passive experience learning + active memory curation (default: true)",
           "anyOf": [
@@ -1091,7 +1131,53 @@
                         },
                         "retrieve": {
                           "description": "Inject relevant past experiences into new conversations (default: true)",
-                          "type": "boolean"
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "ref": "PassiveRetrievalConfig",
+                              "type": "object",
+                              "properties": {
+                                "simThreshold": {
+                                  "description": "Minimum cosine similarity for retrieval candidates (default: 0.5)",
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1
+                                },
+                                "topK": {
+                                  "description": "Number of experiences to retrieve (default: 5)",
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9007199254740991
+                                },
+                                "epsilon": {
+                                  "description": "ε-greedy exploration probability (default: 0.1)",
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1
+                                },
+                                "wSim": {
+                                  "description": "Weight for similarity in hybrid score (default: 0.5)",
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1
+                                },
+                                "wQ": {
+                                  "description": "Weight for Q-value in hybrid score (default: 0.5)",
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1
+                                },
+                                "explorationConstant": {
+                                  "description": "UCB1 exploration constant — scales √(ln(N)/n) visit-decay bonus (default: 0.5)",
+                                  "type": "number",
+                                  "minimum": 0
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          ]
                         },
                         "learning": {
                           "description": "Hyperparameters for the experience learning pipeline",
@@ -1104,55 +1190,96 @@
                               "minimum": 0,
                               "maximum": 1
                             },
-                            "epsilon": {
-                              "description": "ε-greedy exploration probability (default: 0.1)",
+                            "qInit": {
+                              "description": "Optimistic Q-value initialization per reward dimension (default: 1.0)",
+                              "type": "number"
+                            },
+                            "dedupIntentThreshold": {
+                              "description": "Intent cosine similarity threshold for deduplicating experiences (default: 0.85)",
                               "type": "number",
                               "minimum": 0,
                               "maximum": 1
                             },
-                            "simThreshold": {
-                              "description": "Minimum cosine similarity for retrieval candidates (default: 0.5)",
+                            "dedupScriptThreshold": {
+                              "description": "Script cosine similarity threshold for deduplicating experiences (default: 0.8)",
                               "type": "number",
                               "minimum": 0,
                               "maximum": 1
                             },
-                            "topK": {
-                              "description": "Number of experiences to retrieve (default: 5)",
+                            "qHistorySize": {
+                              "description": "Maximum Q-value history entries per experience (default: 50)",
                               "type": "integer",
                               "minimum": 1,
                               "maximum": 9007199254740991
                             },
-                            "wSim": {
-                              "description": "Weight for similarity in hybrid score (default: 0.5)",
+                            "snapThreshold": {
+                              "description": "Threshold for snapping reward dimensions to discrete {-1, 0, 1} (default: 0.5)",
                               "type": "number",
                               "minimum": 0,
                               "maximum": 1
                             },
-                            "wQ": {
-                              "description": "Weight for Q-value in hybrid score (default: 0.5)",
+                            "legacyRewardConfidence": {
+                              "description": "Default confidence for legacy scalar reward format (default: 0.3)",
                               "type": "number",
                               "minimum": 0,
                               "maximum": 1
                             },
-                            "rewardThreshold": {
-                              "description": "Reward boundary between script (>=) and reflect (<) paths (default: 0)",
-                              "type": "number",
-                              "minimum": -1,
-                              "maximum": 1
-                            },
-                            "dedupThreshold": {
-                              "description": "Cosine similarity threshold for deduplicating experiences (default: 0.85)",
-                              "type": "number",
+                            "encoderRetries": {
+                              "description": "LLM retry count for intent/script/reward generation (default: 3)",
+                              "type": "integer",
                               "minimum": 0,
-                              "maximum": 1
+                              "maximum": 9007199254740991
                             },
-                            "qInitPos": {
-                              "description": "Initial Q-value for positive-reward experiences (default: 0)",
-                              "type": "number"
+                            "digestToolOutputBudget": {
+                              "description": "Max estimated tokens for tool output in turn digest (default: 800)",
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
                             },
-                            "qInitNeg": {
-                              "description": "Initial Q-value for negative-reward experiences (default: 0)",
-                              "type": "number"
+                            "encoderToolFieldBudget": {
+                              "description": "Max chars per tool input field in encoder context (default: 500)",
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "encoderToolOutputBudget": {
+                              "description": "Max chars for tool output in encoder context (default: 300)",
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "rewardWeights": {
+                              "description": "Weights for multi-dimensional reward composition (default: outcome=0.35, intent=0.25, execution=0.2, orchestration=0.1, expression=0.1)",
+                              "type": "object",
+                              "properties": {
+                                "outcome": {
+                                  "description": "Weight for outcome dimension (default: 0.35)",
+                                  "type": "number"
+                                },
+                                "intent": {
+                                  "description": "Weight for intent dimension (default: 0.25)",
+                                  "type": "number"
+                                },
+                                "execution": {
+                                  "description": "Weight for execution dimension (default: 0.2)",
+                                  "type": "number"
+                                },
+                                "orchestration": {
+                                  "description": "Weight for orchestration dimension (default: 0.1)",
+                                  "type": "number"
+                                },
+                                "expression": {
+                                  "description": "Weight for expression dimension (default: 0.1)",
+                                  "type": "number"
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "rewardDelay": {
+                              "description": "Number of subsequent turns to wait before evaluating reward (default: 2)",
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
                             }
                           },
                           "additionalProperties": false
@@ -1164,7 +1291,81 @@
                 },
                 "active": {
                   "description": "Agent-initiated active memory curation via memory tools (default: true)",
-                  "type": "boolean"
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "ref": "EvolutionActive",
+                      "type": "object",
+                      "properties": {
+                        "retrieve": {
+                          "description": "Auto-inject relevant memories into new conversations (default: true)",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "simThreshold": {
+                                  "description": "Default minimum similarity for auto-injection (default: 0.5)",
+                                  "type": "number"
+                                },
+                                "topK": {
+                                  "description": "Default maximum entries per category to auto-inject (default: 5)",
+                                  "type": "number"
+                                },
+                                "categories": {
+                                  "description": "Per-category retrieval overrides",
+                                  "type": "object",
+                                  "propertyNames": {
+                                    "type": "string",
+                                    "enum": [
+                                      "user",
+                                      "self",
+                                      "relationship",
+                                      "preference",
+                                      "asset",
+                                      "insight",
+                                      "knowledge",
+                                      "general"
+                                    ]
+                                  },
+                                  "additionalProperties": {
+                                    "type": "object",
+                                    "properties": {
+                                      "fullRecall": {
+                                        "description": "Load all entries without similarity filtering (default: false)",
+                                        "type": "boolean"
+                                      },
+                                      "simThreshold": {
+                                        "description": "Minimum similarity for retrieval",
+                                        "type": "number"
+                                      },
+                                      "topK": {
+                                        "description": "Maximum entries to retrieve",
+                                        "type": "number"
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "memoryDedupThreshold": {
+                          "description": "Cosine similarity threshold for blocking duplicate memory writes (default: 0.75)",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -1376,6 +1577,41 @@
                       "description": "Enable streaming card updates",
                       "default": true,
                       "type": "boolean"
+                    },
+                    "streamingThrottleMs": {
+                      "description": "Minimum interval between streaming card updates in ms",
+                      "default": 100,
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "groupSessionScope": {
+                      "description": "Session scoping strategy for group chats",
+                      "default": "group",
+                      "type": "string",
+                      "enum": [
+                        "group",
+                        "group_sender",
+                        "group_topic",
+                        "group_topic_sender"
+                      ]
+                    },
+                    "inboundDebounceMs": {
+                      "description": "Debounce rapid-fire messages from the same sender in the same chat (0 = disabled)",
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "resolveSenderNames": {
+                      "description": "Resolve sender display names via Feishu contact API",
+                      "default": true,
+                      "type": "boolean"
+                    },
+                    "replyInThread": {
+                      "description": "Reply in thread when message is part of a topic",
+                      "default": false,
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -1385,7 +1621,12 @@
                     "allowDM",
                     "allowGroup",
                     "requireMention",
-                    "streaming"
+                    "streaming",
+                    "streamingThrottleMs",
+                    "groupSessionScope",
+                    "inboundDebounceMs",
+                    "resolveSenderNames",
+                    "replyInThread"
                   ],
                   "additionalProperties": false
                 }
@@ -1408,6 +1649,59 @@
               "type",
               "accounts",
               "streaming"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "ref": "ChannelHolosConfig",
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "holos"
+              },
+              "apiUrl": {
+                "description": "Holos API base URL",
+                "default": "https://www.holosai.io",
+                "type": "string"
+              },
+              "wsUrl": {
+                "description": "Holos WebSocket base URL",
+                "default": "wss://www.holosai.io",
+                "type": "string"
+              },
+              "portalUrl": {
+                "description": "Holos portal URL for browser-facing pages (bind/start)",
+                "default": "https://www.holosai.io",
+                "type": "string"
+              },
+              "accounts": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "ref": "ChannelHolosAccountConfig",
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "enabled"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "type",
+              "apiUrl",
+              "wsUrl",
+              "portalUrl",
+              "accounts"
             ],
             "additionalProperties": false
           }
@@ -1562,6 +1856,21 @@
       "properties": {
         "url": {
           "description": "Enterprise URL",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agora": {
+      "description": "Agora Q&A platform configuration",
+      "type": "object",
+      "properties": {
+        "url": {
+          "description": "Agora API base URL",
+          "type": "string"
+        },
+        "tokenUrl": {
+          "description": "Holos API URL for Agora token exchange (defaults to https://www.holosai.io)",
           "type": "string"
         }
       },

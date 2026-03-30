@@ -52,7 +52,7 @@
       "additionalProperties": false
     },
     "command": {
-      "description": "Command configuration, see https://synergy.ai/docs/commands",
+      "description": "Command configuration",
       "type": "object",
       "propertyNames": {
         "type": "string"
@@ -171,7 +171,7 @@
       "type": "string"
     },
     "agent": {
-      "description": "Agent configuration, see https://synergy.ai/docs/agent",
+      "description": "Agent configuration",
       "type": "object",
       "properties": {
         "master": {

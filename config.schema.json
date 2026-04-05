@@ -740,11 +740,11 @@
                                   "type": "number"
                                 },
                                 "topK": {
-                                  "description": "Default maximum entries per category to auto-inject (default: 5)",
+                                  "description": "Default maximum entries per category to contextually retrieve (default: 5)",
                                   "type": "number"
                                 },
                                 "categories": {
-                                  "description": "Per-category retrieval overrides",
+                                  "description": "Per-category contextual retrieval overrides",
                                   "type": "object",
                                   "propertyNames": {
                                     "type": "string",
@@ -752,26 +752,26 @@
                                       "user",
                                       "self",
                                       "relationship",
-                                      "preference",
+                                      "interaction",
+                                      "workflow",
+                                      "coding",
+                                      "writing",
                                       "asset",
                                       "insight",
                                       "knowledge",
+                                      "personal",
                                       "general"
                                     ]
                                   },
                                   "additionalProperties": {
                                     "type": "object",
                                     "properties": {
-                                      "fullRecall": {
-                                        "description": "Load all entries without similarity filtering (default: false)",
-                                        "type": "boolean"
-                                      },
                                       "simThreshold": {
-                                        "description": "Minimum similarity for retrieval",
+                                        "description": "Minimum similarity for contextual retrieval",
                                         "type": "number"
                                       },
                                       "topK": {
-                                        "description": "Maximum entries to retrieve",
+                                        "description": "Maximum contextual entries to retrieve",
                                         "type": "number"
                                       }
                                     },
